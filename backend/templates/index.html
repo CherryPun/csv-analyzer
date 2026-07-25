@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSV 数据分析平台</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #0f1117; color: #e1e4e8; }
+.header { background: linear-gradient(135deg, #1a1b2e 0%, #2d1b4e 100%); color: #e1e4e8; padding: 40px 20px; text-align: center; border-bottom: 1px solid #2d2d3f; }
+.header h1 { font-size: 28px; margin-bottom: 8px; color: #c9d1d9; }
+.header p { opacity: 0.7; font-size: 14px; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.section { background: #161b22; border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 1px solid #2d2d3f; }
+.section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #c9d1d9; border-left: 4px solid #58a6ff; padding-left: 12px; }
+
+.upload-area { border: 2px dashed #30363d; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; }
+.upload-area:hover { border-color: #58a6ff; background: #1c2128; }
+.upload-area.dragover { border-color: #58a6ff; background: #1c2128; }
+.upload-icon { font-size: 48px; color: #484f58; margin-bottom: 12px; }
+.upload-text { font-size: 16px; color: #8b949e; }
+.upload-hint { font-size: 12px; color: #484f58; margin-top: 8px; }
+.loading { display: none; text-align: center; padding: 40px; }
+.loading .spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid #21262d; border-top-color: #58a6ff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { margin-top: 12px; color: #8b949e; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: #1c2128; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid #2d2d3f; }
+.stat-value { font-size: 28px; font-weight: 700; color: #58a6ff; }
+.stat-label { font-size: 12px; color: #8b949e; margin-top: 4px; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #21262d; white-space: nowrap; }
+th { background: #1c2128; color: #8b949e; font-weight: 600; }
+tr:hover { background: #1c2128; }
+.type-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.type-num { background: #0d2b3e; color: #58a6ff; }
+.type-cat { background: #2d1f00; color: #d29922; }
+.type-date { background: #0d2818; color: #3fb950; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #2d2d3f; padding-bottom: 4px; }
+.tab { padding: 8px 16px; cursor: pointer; border-radius: 6px 6px 0 0; font-size: 13px; color: #8b949e; transition: all 0.2s; }
+.tab:hover { background: #1c2128; color: #c9d1d9; }
+.tab.active { background: #58a6ff; color: #0f1117; font-weight: 600; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.chart-box { width: 100%; height: 400px; margin: 12px 0; }
+.chart-box-sm { height: 350px; }
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 768px) { .chart-row { grid-template-columns: 1fr; } }
+
+.col-selector { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.col-selector label { color: #8b949e; }
+.col-selector select { padding: 6px 12px; border: 1px solid #30363d; border-radius: 6px; font-size: 13px; background: #1c2128; color: #c9d1d9; min-width: 150px; }
+.col-selector select:focus { outline: none; border-color: #58a6ff; }
+.btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; font-weight: 500; }
+.btn-primary { background: #238636; color: white; }
+.btn-primary:hover { background: #2ea043; }
+.btn-success { background: #238636; color: white; }
+.btn-success:hover { background: #2ea043; }
+.btn-danger { background: #da3633; color: white; }
+.btn-danger:hover { background: #f85149; }
+.btn-export { background: #1f6feb; color: white; }
+.btn-export:hover { background: #388bfd; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.sql-area { display: flex; gap: 8px; margin-bottom: 12px; }
+.sql-area input { flex: 1; padding: 8px 12px; border: 1px solid #30363d; border-radius: 6px; font-size: 13px; font-family: 'Consolas', monospace; background: #1c2128; color: #c9d1d9; }
+.sql-area input:focus { outline: none; border-color: #58a6ff; }
+.sql-hint { font-size: 12px; color: #8b949e; margin-bottom: 8px; }
+.sql-hint code { background: #1c2128; padding: 2px 6px; border-radius: 3px; color: #58a6ff; }
+
+.result-table { max-height: 400px; overflow: auto; margin-top: 12px; }
+
+.export-area { display: flex; gap: 12px; align-items: center; }
+.export-area .btn { font-size: 14px; padding: 10px 24px; }
+.export-area span { color: #8b949e !important; font-size: 13px; }
+
+.hidden { display: none !important; }
+.error-msg { color: #f85149; background: #2d1215; border: 1px solid #da3633; padding: 8px 12px; border-radius: 6px; margin: 8px 0; font-size: 13px; }
+.success-msg { color: #3fb950; background: #0d2818; border: 1px solid #238636; padding: 8px 12px; border-radius: 6px; margin: 8px 0; font-size: 13px; }
+
+#resultArea { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>CSV 数据分析平台</h1>
+  <p>上传 CSV 文件，自动生成数据概览、统计分析和可视化报告</p>
+</div>
+
+<div class="container">
+  <div id="uploadSection" class="section">
+    <div class="section-title">上传数据</div>
+    <div class="upload-area" id="uploadArea">
+      <div class="upload-icon">+</div>
+      <div class="upload-text">点击或拖拽 CSV 文件到此处</div>
+      <div class="upload-hint">支持 .csv 格式，最大 10MB</div>
+    </div>
+    <input type="file" id="fileInput" accept=".csv" style="display:none">
+    <div id="uploadError" class="error-msg hidden"></div>
+  </div>
+
+  <div id="loadingSection" class="section loading">
+    <div class="spinner"></div>
+    <div class="loading-text">正在分析数据...</div>
+  </div>
+
+  <div id="resultArea">
+    <div id="overviewSection" class="section">
+      <div class="section-title">数据概览</div>
+      <div id="statsGrid" class="stats-grid"></div>
+      <div class="table-wrap">
+        <table id="overviewTable">
+          <thead>
+            <tr><th>列名</th><th>类型</th><th>缺失值</th><th>缺失率</th><th>唯一值</th><th>统计信息</th></tr>
+          </thead>
+          <tbody id="overviewBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="analysisSection" class="section">
+      <div class="section-title">自动分析</div>
+      <div class="tabs">
+        <div class="tab active" data-tab="numeric">数值列</div>
+        <div class="tab" data-tab="categorical">类别列</div>
+        <div class="tab" data-tab="correlation">相关性</div>
+        <div class="tab" data-tab="missing">缺失值</div>
+      </div>
+
+      <div id="tabNumeric" class="tab-content active">
+        <div class="col-selector">
+          <label>选择数值列：</label>
+          <select id="numColSelect"><option value="">-- 请选择 --</option></select>
+          <button class="btn btn-primary" id="analyzeNumBtn">分析</button>
+        </div>
+        <div id="numStats" class="stats-grid" style="display:none"></div>
+        <div class="chart-row">
+          <div><div id="histChart" class="chart-box chart-box-sm"></div></div>
+          <div><div id="boxChart" class="chart-box chart-box-sm"></div></div>
+        </div>
+      </div>
+
+      <div id="tabCategorical" class="tab-content">
+        <div class="col-selector">
+          <label>选择类别列：</label>
+          <select id="catColSelect"><option value="">-- 请选择 --</option></select>
+          <button class="btn btn-primary" id="analyzeCatBtn">分析</button>
+        </div>
+        <div class="chart-row">
+          <div><div id="pieChart" class="chart-box chart-box-sm"></div></div>
+          <div><div id="barChart" class="chart-box chart-box-sm"></div></div>
+        </div>
+      </div>
+
+      <div id="tabCorrelation" class="tab-content">
+        <div id="corrContent">
+          <img id="corrHeatmap" src="" alt="相关性热图" style="max-width:100%; display:none">
+          <div id="corrTableWrap" class="table-wrap" style="margin-top:12px"></div>
+          <div id="corrMsg" class="error-msg"></div>
+        </div>
+      </div>
+
+      <div id="tabMissing" class="tab-content">
+        <div id="missingContent">
+          <div id="missingStats" class="stats-grid"></div>
+          <div id="missingChart" class="chart-box" style="height:300px"></div>
+          <div id="missingSuggestions" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="interactSection" class="section">
+      <div class="section-title">交互查询</div>
+      <div class="tabs">
+        <div class="tab active" data-tab="sql">SQL 查询</div>
+        <div class="tab" data-tab="chart">散点/折线图</div>
+      </div>
+
+      <div id="tabSql" class="tab-content active">
+        <div class="sql-hint">表名用 <code>df</code>，例如：<code>SELECT * FROM df WHERE 年龄 > 30 LIMIT 10</code></div>
+        <div class="sql-area">
+          <input type="text" id="sqlInput" placeholder="输入 SQL 查询语句...">
+          <button class="btn btn-primary" id="sqlBtn">执行</button>
+        </div>
+        <div id="sqlError" class="error-msg hidden"></div>
+        <div id="sqlResult" class="result-table"></div>
+      </div>
+
+      <div id="tabChart" class="tab-content">
+        <div class="col-selector">
+          <label>图表类型：</label>
+          <select id="chartTypeSelect"><option value="scatter">散点图</option><option value="line">折线图</option></select>
+          <label>X 轴：</label>
+          <select id="xColSelect"><option value="">--</option></select>
+          <label>Y 轴：</label>
+          <select id="yColSelect"><option value="">--</option></select>
+          <button class="btn btn-primary" id="plotBtn">绘制</button>
+        </div>
+        <div id="interactChart" class="chart-box" style="height:450px"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">导出报告</div>
+      <div class="export-area">
+        <button class="btn btn-export" id="exportPdfBtn">导出 PDF 报告</button>
+        <span style="color:#999;font-size:13px">包含数据概览、列统计、缺失值分析和相关性热图</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let fileId = null;
+let overview = null;
+let charts = {};
+
+document.getElementById('uploadArea').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+
+document.getElementById('uploadArea').addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.currentTarget.classList.add('dragover');
+});
+
+document.getElementById('uploadArea').addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+});
+
+document.getElementById('uploadArea').addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  const files = e.dataTransfer.files;
+  if (files.length > 0) uploadFile(files[0]);
+});
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  if (e.target.files.length > 0) uploadFile(e.target.files[0]);
+});
+
+async function uploadFile(file) {
+  if (!file.name.endsWith('.csv')) {
+    showError('uploadError', '请上传 CSV 格式的文件');
+    return;
+  }
+
+  document.getElementById('uploadSection').style.display = 'none';
+  document.getElementById('loadingSection').style.display = 'block';
+  document.getElementById('resultArea').style.display = 'none';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showError('uploadError', data.detail || '上传失败');
+      document.getElementById('uploadSection').style.display = 'block';
+      document.getElementById('loadingSection').style.display = 'none';
+      return;
+    }
+
+    fileId = data.file_id;
+    overview = data.overview;
+    document.getElementById('loadingSection').style.display = 'none';
+    document.getElementById('resultArea').style.display = 'block';
+    renderOverview(overview);
+    populateSelects(overview);
+    loadCorrelation();
+    loadMissing();
+  } catch (err) {
+    showError('uploadError', '网络错误: ' + err.message);
+    document.getElementById('uploadSection').style.display = 'block';
+    document.getElementById('loadingSection').style.display = 'none';
+  }
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function hideError(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+function renderOverview(ov) {
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${ov.rows}</div><div class="stat-label">行数</div></div>
+    <div class="stat-card"><div class="stat-value">${ov.cols}</div><div class="stat-label">列数</div></div>
+    <div class="stat-card"><div class="stat-value">${ov.missing_cells}</div><div class="stat-label">缺失值</div></div>
+    <div class="stat-card"><div class="stat-value">${ov.missing_percent}%</div><div class="stat-label">缺失率</div></div>
+    <div class="stat-card"><div class="stat-value">${ov.duplicated_rows}</div><div class="stat-label">重复行</div></div>
+    <div class="stat-card"><div class="stat-value">${ov.memory_usage}</div><div class="stat-label">内存占用</div></div>
+  `;
+
+  const tbody = document.getElementById('overviewBody');
+  tbody.innerHTML = '';
+  ov.columns.forEach(col => {
+    const typeClass = col.type === '数值' ? 'type-num' : col.type === '类别' ? 'type-cat' : 'type-date';
+    let statsText = '-';
+    if (col.stats) {
+      if (col.type === '数值') {
+        const s = col.stats;
+        statsText = `均值=${s.mean ?? '-'}, 中位数=${s.median ?? '-'}, 最小=${s.min ?? '-'}, 最大=${s.max ?? '-'}`;
+      } else if (col.type === '类别') {
+        statsText = `最多: ${col.stats.top ?? '-'} (${col.stats.top_freq ?? 0}次)`;
+      } else if (col.type === '日期') {
+        statsText = `${col.stats.min ?? '-'} ~ ${col.stats.max ?? '-'}`;
+      }
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${col.name}</strong></td>
+      <td><span class="type-tag ${typeClass}">${col.type}</span></td>
+      <td>${col.missing}</td>
+      <td>${col.missing_pct}%</td>
+      <td>${col.unique}</td>
+      <td style="font-size:12px;color:#888">${statsText}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function populateSelects(ov) {
+  const numCols = ov.numeric_cols || [];
+  const catCols = ov.categorical_cols || [];
+  const allCols = ov.columns.map(c => c.name);
+
+  const numSelect = document.getElementById('numColSelect');
+  numSelect.innerHTML = '<option value="">-- 请选择 --</option>' + numCols.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  const catSelect = document.getElementById('catColSelect');
+  catSelect.innerHTML = '<option value="">-- 请选择 --</option>' + catCols.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  const xSelect = document.getElementById('xColSelect');
+  const ySelect = document.getElementById('yColSelect');
+  const opts = allCols.map(c => `<option value="${c}">${c}</option>`).join('');
+  xSelect.innerHTML = '<option value="">-- 选择 X 轴 --</option>' + opts;
+  ySelect.innerHTML = '<option value="">-- 选择 Y 轴 --</option>' + opts;
+}
+
+// Tab switching
+document.querySelectorAll('.tabs').forEach(tabGroup => {
+  tabGroup.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const parent = tab.parentElement;
+      parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      const tabId = tab.dataset.tab;
+      const contentParent = parent.parentElement;
+      const prefix = parent === tabGroup ? '' : '';
+      contentParent.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      if (parent.closest('#interactSection')) {
+        document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).classList.add('active');
+      } else {
+        const tabNames = { numeric: 'Numeric', categorical: 'Categorical', correlation: 'Correlation', missing: 'Missing', sql: 'Sql', chart: 'Chart' };
+        document.getElementById('tab' + tabNames[tabId]).classList.add('active');
+      }
+    });
+  });
+});
+
+// Numeric analysis
+document.getElementById('analyzeNumBtn').addEventListener('click', async () => {
+  const col = document.getElementById('numColSelect').value;
+  if (!col) return;
+  const res = await fetch(`/api/analyze/numeric?file_id=${fileId}&col=${encodeURIComponent(col)}`);
+  const data = await res.json();
+  if (!res.ok) return;
+
+  document.getElementById('numStats').style.display = 'grid';
+  const s = data.stats;
+  document.getElementById('numStats').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${s.count}</div><div class="stat-label">计数</div></div>
+    <div class="stat-card"><div class="stat-value">${s.mean}</div><div class="stat-label">均值</div></div>
+    <div class="stat-card"><div class="stat-value">${s.median}</div><div class="stat-label">中位数</div></div>
+    <div class="stat-card"><div class="stat-value">${s.std}</div><div class="stat-label">标准差</div></div>
+    <div class="stat-card"><div class="stat-value">${s.min}</div><div class="stat-label">最小值</div></div>
+    <div class="stat-card"><div class="stat-value">${s.max}</div><div class="stat-label">最大值</div></div>
+    <div class="stat-card"><div class="stat-value">${s.q25}</div><div class="stat-label">Q1</div></div>
+    <div class="stat-card"><div class="stat-value">${s.q75}</div><div class="stat-label">Q3</div></div>
+    <div class="stat-card"><div class="stat-value">${data.outliers.count}</div><div class="stat-label">异常值 (${data.outliers.percent}%)</div></div>
+  `;
+
+  renderHistogram(col, data.histogram);
+  renderBoxplot(col, data.boxplot);
+});
+
+function renderHistogram(col, hist) {
+  const el = document.getElementById('histChart');
+  if (charts.hist) charts.hist.dispose();
+  charts.hist = echarts.init(el, null, { renderer: 'canvas' });
+  const labels = [];
+  for (let i = 0; i < hist.bins.length - 1; i++) {
+    labels.push(`${hist.bins[i].toFixed(2)}-${hist.bins[i+1].toFixed(2)}`);
+  }
+  charts.hist.setOption({
+    backgroundColor: '#161b22',
+    title: { text: `${col} - 直方图`, left: 'center', textStyle: { fontSize: 14, color: '#c9d1d9' } },
+    tooltip: { trigger: 'axis', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#c9d1d9' } },
+    xAxis: { type: 'category', data: labels, axisLabel: { rotate: 45, fontSize: 10, color: '#8b949e' }, axisLine: { lineStyle: { color: '#30363d' } } },
+    yAxis: { type: 'value', axisLabel: { color: '#8b949e' }, axisLine: { lineStyle: { color: '#30363d' } }, splitLine: { lineStyle: { color: '#21262d' } } },
+    series: [{ type: 'bar', data: hist.counts, itemStyle: { color: '#58a6ff' } }],
+    grid: { bottom: 80, top: 40 }
+  });
+}
+
+function renderBoxplot(col, imgBase64) {
+  document.getElementById('boxChart').innerHTML = `<img src="data:image/png;base64,${imgBase64}" style="max-width:100%;height:100%">`;
+}
+
+// Categorical analysis
+document.getElementById('analyzeCatBtn').addEventListener('click', async () => {
+  const col = document.getElementById('catColSelect').value;
+  if (!col) return;
+  const res = await fetch(`/api/analyze/categorical?file_id=${fileId}&col=${encodeURIComponent(col)}`);
+  const data = await res.json();
+  if (!res.ok) return;
+
+  renderPieChart(col, data);
+  renderBarChart(col, data);
+});
+
+function renderPieChart(col, data) {
+  const el = document.getElementById('pieChart');
+  if (charts.pie) charts.pie.dispose();
+  charts.pie = echarts.init(el);
+  const limit = 20;
+  const items = data.freq.slice(0, limit);
+  charts.pie.setOption({
+    backgroundColor: '#161b22',
+    title: { text: `${col} - 饼图`, left: 'center', textStyle: { fontSize: 14, color: '#c9d1d9' } },
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#c9d1d9' } },
+    series: [{
+      type: 'pie', radius: ['30%', '60%'],
+      data: items.map(d => ({ name: d.label, value: d.count })),
+      label: { fontSize: 10, color: '#8b949e' },
+      itemStyle: { borderColor: '#161b22', borderWidth: 2 },
+    }],
+  });
+}
+
+function renderBarChart(col, data) {
+  const el = document.getElementById('barChart');
+  if (charts.bar) charts.bar.dispose();
+  charts.bar = echarts.init(el);
+  const limit = 20;
+  const items = data.freq.slice(0, limit);
+  charts.bar.setOption({
+    backgroundColor: '#161b22',
+    title: { text: `${col} - 柱状图 (Top ${limit})`, left: 'center', textStyle: { fontSize: 14, color: '#c9d1d9' } },
+    tooltip: { trigger: 'axis', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#c9d1d9' } },
+    xAxis: { type: 'category', data: items.map(d => d.label.length > 15 ? d.label.slice(0,15)+'...' : d.label), axisLabel: { rotate: 45, fontSize: 10, color: '#8b949e' }, axisLine: { lineStyle: { color: '#30363d' } } },
+    yAxis: { type: 'value', axisLabel: { color: '#8b949e' }, axisLine: { lineStyle: { color: '#30363d' } }, splitLine: { lineStyle: { color: '#21262d' } } },
+    series: [{ type: 'bar', data: items.map(d => d.count), itemStyle: { color: '#d29922' } }],
+    grid: { bottom: 80, top: 40 }
+  });
+}
+
+// Correlation
+async function loadCorrelation() {
+  const res = await fetch(`/api/correlation?file_id=${fileId}`);
+  const data = await res.json();
+  const heatmapEl = document.getElementById('corrHeatmap');
+  const tableWrap = document.getElementById('corrTableWrap');
+  const msgEl = document.getElementById('corrMsg');
+
+  if (data.error) {
+    msgEl.textContent = data.error;
+    heatmapEl.style.display = 'none';
+    tableWrap.innerHTML = '';
+    return;
+  }
+
+  msgEl.textContent = '';
+  heatmapEl.src = 'data:image/png;base64,' + data.heatmap;
+  heatmapEl.style.display = 'block';
+
+  let html = '<table><thead><tr><th></th>';
+  data.columns.forEach(c => { html += `<th>${c}</th>`; });
+  html += '</tr></thead><tbody>';
+  data.matrix.forEach((row, i) => {
+    html += `<tr><td><strong>${data.columns[i]}</strong></td>`;
+    row.forEach((v, j) => {
+      const color = Math.abs(v) > 0.7 ? '#ff4d4f' : Math.abs(v) > 0.4 ? '#fa8c16' : '#52c41a';
+      html += `<td style="color:${color}">${v.toFixed(3)}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  tableWrap.innerHTML = html;
+}
+
+// Missing values
+async function loadMissing() {
+  const res = await fetch(`/api/missing?file_id=${fileId}`);
+  const data = await res.json();
+  if (!res.ok) return;
+
+  document.getElementById('missingStats').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${data.total_missing}</div><div class="stat-label">总缺失值</div></div>
+    <div class="stat-card"><div class="stat-value">${data.total_cells}</div><div class="stat-label">总单元格</div></div>
+    <div class="stat-card"><div class="stat-value">${(data.total_missing / data.total_cells * 100).toFixed(2)}%</div><div class="stat-label">总体缺失率</div></div>
+  `;
+
+  if (data.missing_columns && data.missing_columns.length > 0) {
+    const el = document.getElementById('missingChart');
+    if (charts.missing) charts.missing.dispose();
+    charts.missing = echarts.init(el);
+    charts.missing.setOption({
+      backgroundColor: '#161b22',
+      title: { text: '各列缺失值分布', left: 'center', textStyle: { fontSize: 14, color: '#c9d1d9' } },
+      tooltip: { trigger: 'axis', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#c9d1d9' } },
+      xAxis: { type: 'category', data: data.missing_columns.map(d => d.col), axisLabel: { rotate: 45, fontSize: 10, color: '#8b949e' }, axisLine: { lineStyle: { color: '#30363d' } } },
+      yAxis: { type: 'value', name: '缺失数量', nameTextStyle: { color: '#8b949e' }, axisLabel: { color: '#8b949e' }, axisLine: { lineStyle: { color: '#30363d' } }, splitLine: { lineStyle: { color: '#21262d' } } },
+      series: [{
+        type: 'bar', data: data.missing_columns.map(d => d.count),
+        itemStyle: { color: '#f85149' }
+      }],
+      grid: { bottom: 80 }
+    });
+  }
+
+  const suggestEl = document.getElementById('missingSuggestions');
+  if (data.suggestions && data.suggestions.length > 0) {
+    suggestEl.innerHTML = '<h4 style="margin-bottom:8px;color:#333;font-size:14px">处理建议：</h4>' +
+      data.suggestions.map(s => `<div style="background:#fff8f8;padding:6px 12px;border-radius:4px;margin-bottom:4px;font-size:13px;border-left:3px solid #ff4d4f">${s}</div>`).join('');
+  } else {
+    suggestEl.innerHTML = '<div class="success-msg">数据集没有缺失值！</div>';
+  }
+}
+
+// SQL query
+document.getElementById('sqlBtn').addEventListener('click', async () => {
+  const sql = document.getElementById('sqlInput').value.trim();
+  if (!sql) return;
+  hideError('sqlError');
+
+  const res = await fetch(`/api/query?file_id=${fileId}&sql=${encodeURIComponent(sql)}`);
+  const data = await res.json();
+
+  const resultDiv = document.getElementById('sqlResult');
+  const errorDiv = document.getElementById('sqlError');
+
+  if (!data.success) {
+    showError('sqlError', data.error);
+    resultDiv.innerHTML = '';
+    return;
+  }
+
+  if (data.total_rows === 0) {
+    resultDiv.innerHTML = '<div style="color:#888;padding:12px">查询结果为空</div>';
+    return;
+  }
+
+  let html = `<div style="color:#888;margin-bottom:8px;font-size:12px">共 ${data.total_rows} 条结果</div><table><thead><tr>`;
+  data.columns.forEach(c => { html += `<th>${c}</th>`; });
+  html += '</tr></thead><tbody>';
+  data.rows.slice(0, 100).forEach(row => {
+    html += '<tr>' + row.map(v => `<td>${v === null ? '<span style="color:#ddd">null</span>' : v}</td>`).join('') + '</tr>';
+  });
+  html += '</tbody></table>';
+  if (data.total_rows > 100) {
+    html += `<div style="color:#999;font-size:12px;padding:8px">仅显示前 100 条，共 ${data.total_rows} 条</div>`;
+  }
+  resultDiv.innerHTML = html;
+  document.getElementById('sqlInput').focus();
+});
+
+// SQL enter key
+document.getElementById('sqlInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('sqlBtn').click();
+});
+
+// Interactive chart
+document.getElementById('plotBtn').addEventListener('click', async () => {
+  const type = document.getElementById('chartTypeSelect').value;
+  const colX = document.getElementById('xColSelect').value;
+  const colY = document.getElementById('yColSelect').value;
+  if (!colX || !colY) return;
+
+  const endpoint = type === 'scatter' ? '/api/scatter' : '/api/line';
+  const res = await fetch(`${endpoint}?file_id=${fileId}&col_x=${encodeURIComponent(colX)}&col_y=${encodeURIComponent(colY)}`);
+  const data = await res.json();
+  const chartEl = document.getElementById('interactChart');
+  if (!res.ok || data.error) {
+    chartEl.innerHTML = `<div class="error-msg">${data.error || '请求失败'}</div>`;
+    if (charts.interact) { charts.interact.dispose(); charts.interact = null; }
+    return;
+  }
+
+  if (charts.interact) charts.interact.dispose();
+  chartEl.innerHTML = '';
+  charts.interact = echarts.init(chartEl);
+
+  const option = {
+    backgroundColor: '#161b22',
+    title: { text: `${colX} vs ${colY} (${type === 'scatter' ? '散点图' : '折线图'})`, left: 'center', textStyle: { fontSize: 14, color: '#c9d1d9' } },
+    tooltip: { trigger: 'axis', backgroundColor: '#1c2128', borderColor: '#30363d', textStyle: { color: '#c9d1d9' } },
+    xAxis: { type: type === 'scatter' ? 'value' : 'category', name: colX, nameLocation: 'center', nameGap: 30, nameTextStyle: { color: '#8b949e' }, axisLabel: { color: '#8b949e' }, axisLine: { lineStyle: { color: '#30363d' } }, splitLine: { lineStyle: { color: '#21262d' } } },
+    yAxis: { type: 'value', name: colY, nameTextStyle: { color: '#8b949e' }, axisLabel: { color: '#8b949e' }, axisLine: { lineStyle: { color: '#30363d' } }, splitLine: { lineStyle: { color: '#21262d' } } },
+    grid: { bottom: 50, top: 50 },
+  };
+
+  if (type === 'scatter') {
+    option.series = [{
+      type: 'scatter',
+      data: data.data.map(d => [d.x, d.y]),
+      symbolSize: 8,
+      itemStyle: { color: '#58a6ff', opacity: 0.8 }
+    }];
+  } else {
+    option.xAxis.data = data.data.map(d => d.x);
+    option.series = [{
+      type: 'line',
+      data: data.data.map(d => d.y),
+      smooth: true,
+      lineStyle: { color: '#58a6ff', width: 2 },
+      itemStyle: { color: '#58a6ff' },
+      areaStyle: { color: 'rgba(88,166,255,0.15)' }
+    }];
+  }
+
+  charts.interact.setOption(option);
+});
+
+// PDF export
+document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('exportPdfBtn');
+  btn.textContent = '生成中...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/export-pdf?file_id=${fileId}`);
+    if (!res.ok) throw new Error('导出失败');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'analysis_report.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('导出失败: ' + err.message);
+  }
+  btn.textContent = '导出 PDF 报告';
+  btn.disabled = false;
+});
+
+// Handle ECharts resize
+window.addEventListener('resize', () => {
+  Object.values(charts).forEach(c => { if (c && c.resize) c.resize(); });
+});
+</script>
+
+</body>
+</html>
