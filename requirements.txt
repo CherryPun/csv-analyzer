@@ -1,0 +1,9 @@
+fastapi>=0.110.0
+uvicorn>=0.29.0
+pandas>=2.1.0
+numpy>=1.26.0,<2
+python-multipart>=0.0.9
+duckdb>=1.0.0
+matplotlib>=3.8.0
+fpdf2>=2.7.0
+python-dotenv>=1.0.0

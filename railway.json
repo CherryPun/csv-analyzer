@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd backend && pip install -r requirements.txt",
-  "startCommand": "cd backend && python main.py",
-  "watchPatterns": ["backend/**"]
-}
