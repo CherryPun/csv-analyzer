@@ -7,21 +7,28 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from analyzer import get_df, get_overview, get_missing_analysis, get_correlation
 
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Micro Hei', 'SimHei', 'Microsoft YaHei', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 
-FONT_PATH = r'C:\Windows\Fonts\simhei.ttf'
-FONT_NAME = 'SimHei'
+_FONT_CANDIDATES = [
+    '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+    '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',
+    r'C:\Windows\Fonts\simhei.ttf',
+    r'C:\Windows\Fonts\msyh.ttc',
+]
+FONT_PATH = next((f for f in _FONT_CANDIDATES if os.path.exists(f)), None)
+FONT_NAME = os.path.splitext(os.path.basename(FONT_PATH))[0] if FONT_PATH else None
 
 
 class ReportPDF(FPDF):
     def __init__(self):
         super().__init__()
-        if os.path.exists(FONT_PATH):
+        if FONT_PATH:
             self.add_font(FONT_NAME, '', FONT_PATH, uni=True)
             self.add_font(FONT_NAME, 'B', FONT_PATH, uni=True)
             self.add_font(FONT_NAME, 'I', FONT_PATH, uni=True)
-        self._use_chinese = os.path.exists(FONT_PATH)
+        self._use_chinese = FONT_PATH is not None
 
     def _font(self, style='', size=10):
         f = FONT_NAME if self._use_chinese else 'Helvetica'
