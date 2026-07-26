@@ -56,12 +56,12 @@ class ReportPDF(FPDF):
         self.set_text_color(0, 0, 0)
         self.ln(2)
 
-    def kv_table(self, data, col_widths=None, header=True):
+    def kv_table(self, data, col_widths=None):
         if not data:
             return
         if col_widths is None:
             col_widths = [60, 60]
-        with self.table(col_widths=col_widths, first_row_as_header=header) as table:
+        with self.table(col_widths=col_widths) as table:
             for row in data:
                 r = table.row()
                 for cell in row:
@@ -149,7 +149,7 @@ def _render_overview(pdf, overview):
     cols_data = [['列名', '类型', '缺失', '唯一值']]
     for col in overview['columns']:
         cols_data.append([col['name'], col['type'], str(col['missing']), str(col['unique'])])
-    pdf.kv_table(cols_data, col_widths=[60, 30, 25, 25], header=True)
+    pdf.kv_table(cols_data, col_widths=[60, 30, 25, 25])
 
 
 def _render_column_stats(pdf, overview):
@@ -188,7 +188,7 @@ def _render_missing(pdf, missing):
     data = [['列名', '缺失数量', '缺失率']]
     for m in missing['missing_columns']:
         data.append([m['col'], str(m['count']), f'{m["percent"]}%'])
-    pdf.kv_table(data, col_widths=[60, 40, 40], header=True)
+    pdf.kv_table(data, col_widths=[60, 40, 40])
 
     pdf.ln(4)
     pdf._f('B', 10)
@@ -224,7 +224,7 @@ def _render_correlation(pdf, file_id, overview):
         data = [header]
         for i, row in enumerate(matrix):
             data.append([cols[i][:8]] + [str(_safe(v, 3)) for v in row])
-        pdf.kv_table(data, header=True)
+        pdf.kv_table(data)
 
 
 def _render_numeric_charts(pdf, file_id, overview):
