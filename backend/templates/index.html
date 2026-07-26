@@ -209,9 +209,20 @@ tr:hover { background: #1c2128; }
 
     <div class="section">
       <div class="section-title">导出报告</div>
+      <div style="margin-bottom:12px">
+        <label style="display:inline-flex;align-items:center;margin-right:16px;color:#8b949e;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="chkCorrelation" checked style="margin-right:4px;accent-color:#58a6ff"> 相关性热图
+        </label>
+        <label style="display:inline-flex;align-items:center;margin-right:16px;color:#8b949e;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="chkNumericCharts" checked style="margin-right:4px;accent-color:#58a6ff"> 数值列分布图
+        </label>
+        <label style="display:inline-flex;align-items:center;margin-right:16px;color:#8b949e;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="chkCategoricalCharts" checked style="margin-right:4px;accent-color:#58a6ff"> 类别列分布图
+        </label>
+      </div>
       <div class="export-area">
         <button class="btn btn-export" id="exportPdfBtn">导出 PDF 报告</button>
-        <span style="color:#999;font-size:13px">包含数据概览、列统计、缺失值分析和相关性热图</span>
+        <span style="color:#8b949e;font-size:13px">报告包含数据概览、列统计、缺失值分析</span>
       </div>
     </div>
   </div>
@@ -644,7 +655,11 @@ document.getElementById('exportPdfBtn').addEventListener('click', async () => {
   btn.textContent = '生成中...';
   btn.disabled = true;
   try {
-    const res = await fetch(`/api/export-pdf?file_id=${fileId}`);
+    const p = new URLSearchParams({ file_id: fileId });
+    if (document.getElementById('chkCorrelation').checked) p.set('include_correlation', 'true'); else p.set('include_correlation', 'false');
+    if (document.getElementById('chkNumericCharts').checked) p.set('include_numeric_charts', 'true'); else p.set('include_numeric_charts', 'false');
+    if (document.getElementById('chkCategoricalCharts').checked) p.set('include_categorical_charts', 'true'); else p.set('include_categorical_charts', 'false');
+    const res = await fetch(`/api/export-pdf?${p}`);
     if (!res.ok) throw new Error('导出失败');
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);

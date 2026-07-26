@@ -108,12 +108,22 @@ async def get_line(file_id: str = Query(...), col_x: str = Query(...), col_y: st
 
 
 @app.get('/api/export-pdf')
-async def export_pdf(file_id: str = Query(...)):
+async def export_pdf(
+    file_id: str = Query(...),
+    include_correlation: bool = Query(True),
+    include_numeric_charts: bool = Query(True),
+    include_categorical_charts: bool = Query(True),
+):
     result = analyzer.get_overview(file_id)
     if result is None:
         raise HTTPException(404, '文件不存在或已过期')
     
-    pdf_bytes = pdf_report.generate_report(file_id)
+    pdf_bytes = pdf_report.generate_report(
+        file_id,
+        include_correlation=include_correlation,
+        include_numeric_charts=include_numeric_charts,
+        include_categorical_charts=include_categorical_charts,
+    )
     if pdf_bytes is None:
         raise HTTPException(500, '生成 PDF 失败')
     
