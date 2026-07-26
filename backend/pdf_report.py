@@ -60,7 +60,9 @@ class ReportPDF(FPDF):
         if not data:
             return
         if col_widths is None:
-            col_widths = [60, 60]
+            n = len(data[0])
+            w = min(40, 180 // n)
+            col_widths = [w] * n
         with self.table(col_widths=col_widths) as table:
             for row in data:
                 r = table.row()
