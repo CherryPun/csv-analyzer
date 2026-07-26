@@ -45,7 +45,7 @@ class ReportPDF(FPDF):
 
     def footer(self):
         self.set_y(-15)
-        self.set_font('Helvetica', 'I', 8)
+        self._f('', 8)
         self.cell(0, 10, f'第 {self.page_no()} 页 / 共 {{nb}} 页', align='C')
 
     def section_title(self, num, title):
@@ -121,7 +121,7 @@ def generate_report(file_id: str, include_correlation=True,
         _render_categorical_charts(pdf, file_id, overview)
 
     pdf.add_page()
-    pdf._f('I', 9)
+    pdf._f('', 9)
     pdf.cell(0, 10, '-- 报告结束 --', align='C')
 
     result = pdf.output()
